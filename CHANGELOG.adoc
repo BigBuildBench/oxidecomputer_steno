@@ -1,0 +1,51 @@
+:showtitle:
+:toc: left
+:icons: font
+:toclevels: 1
+
+= Steno Changelog
+
+// WARNING: This file is modified programmatically by `cargo release` as
+// configured in release.toml.  DO NOT change the format of the headers or the
+// list of raw commits.
+
+// cargo-release: next header goes here (do not change this line)
+
+== Unreleased changes (release date TBD)
+
+https://github.com/oxidecomputer/steno/compare/v0.4.1\...HEAD[Full list of commits]
+
+== 0.4.1 (released 2024-07-01)
+
+https://github.com/oxidecomputer/steno/compare/v0.4.0\...v0.4.1[Full list of commits]
+
+* https://github.com/oxidecomputer/steno/pull/286[#286] Steno now more consistently logs events in a saga lifetime: create/restore, start running, finish running.
+
+== 0.4.0 (released 2023-05-25)
+
+https://github.com/oxidecomputer/steno/compare/v0.3.1\...v0.4.0[Full list of commits]
+
+=== Breaking changes
+
+* https://github.com/oxidecomputer/steno/pull/138[#138] Steno no longer panics when an undo action fails.  `SagaResultErr` has a new optional field describing whether any undo action failed during unwinding.  **You should check this.**  If an undo action fails, then the program has failed to provide the usual guarantee that a saga either runs to completion or completely unwinds.  What to do next is application-specific but in general this cannot be automatically recovered from.  (If there are steps that can automatically recover in this case, the undo action that failed should probably do that instead.)
+
+== 0.3.1 (released 2023-01-06)
+
+https://github.com/oxidecomputer/steno/compare/v0.3.0\...v0.3.1[Full list of commits]
+
+* https://github.com/oxidecomputer/steno/pull/88[#88] Add `SecClient::saga_inject_repeat` method to help with testing idempotency
+
+== 0.3.0 (released 2022-11-02)
+
+https://github.com/oxidecomputer/steno/compare/v0.2.0\...v0.3.0[Full list of commits]
+
+* https://github.com/oxidecomputer/steno/pull/40[#40] Add `Dag::builder` method
+* https://github.com/oxidecomputer/steno/pull/67[#67] Add methods for inspecting Saga DAG / https://github.com/oxidecomputer/steno/pull/73[#73] A minor extention to #67, expose indices
+
+=== Breaking Changes
+
+None.
+
+== 0.2.0 (released 2022-08-05)
+
+Changes not documented.

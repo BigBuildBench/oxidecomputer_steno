@@ -1,0 +1,60 @@
+#
+# Configuration for GitHub-based CI, based on the stock GitHub Rust config.
+#
+name: Rust
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check-style:
+    runs-on: ubuntu-24.04
+    steps:
+    # actions/checkout@v2
+    - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
+    - name: Report cargo version
+      run: cargo --version
+    - name: Report rustfmt version
+      run: cargo fmt -- --version
+    - name: Check style
+      run: cargo fmt -- --check
+
+  clippy-lint:
+    runs-on: ubuntu-24.04
+    steps:
+    # actions/checkout@v2
+    - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
+    - name: Report cargo version
+      run: cargo --version
+    - name: Report Clippy version
+      run: cargo clippy -- --version
+    - name: Run Clippy Lints
+      #
+      # Clippy's style nits are useful, but not worth keeping in CI.  This
+      # override belongs in src/lib.rs, and it is there, but that doesn't
+      # reliably work due to rust-lang/rust-clippy#6610.
+      #
+      run: cargo clippy --all-targets -- --deny warnings --allow clippy::style
+
+  build-and-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04, windows-2022, macos-12 ]
+    steps:
+    # actions/checkout@v2
+    - uses: actions/checkout@d632683dd7b4114ad314bca15554477dd762a938
+    - uses: actions-rs/toolchain@88dc2356392166efad76775c878094f4e83ff746
+      with:
+        profile: minimal
+        toolchain: stable
+        override: true
+    - name: Report cargo version
+      run: cargo --version
+    - name: Build
+      run: cargo build --tests --verbose
+    - name: Run tests
+      run: cargo test --verbose

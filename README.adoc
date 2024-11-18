@@ -1,0 +1,95 @@
+:showtitle:
+:toc: left
+:icons: font
+
+= steno
+
+This repo contains an in-progress prototype interface for sagas based on
+https://www.youtube.com/watch?v=0UTOLRTwOX0[Distributed Sagas as described by
+Caitie McAffrey].  See the crate documentation for details.  You can build the
+docs yourself with:
+
+```
+cargo doc
+```
+
+Sagas seek to decompose complex tasks into comparatively simple actions.  Execution of the saga (dealing with unwinding, etc.) is implemented in one place with good mechanisms for observing progress, controlling execution, etc.  That's what this crate provides.
+
+== Status
+
+This crate has usable interfaces for defining and executing sagas.
+
+Features:
+
+* Execution is recorded to a saga log.  Consumers can impl `SecStore` to persist this to a database.  Intermediate log states can be recovered, meaning that you can resume execution after a simulated crash.
+* Actions can share state using arbitrary serializable types (dynamically-checked, unfortunately).
+* Unwinding: if an action fails, all nodes are unwound (basically, undo actions are executed for nodes whose actions completed; it's more complicated for nodes whose actions _may_ have run)
+* Injecting errors into an arbitrary node
+* Fine-grained status reporting (status of each action)
+
+There's a demo program (`examples/demo-provision`) to exercise all of this with a toy saga that resembles VM provisioning.
+
+There are lots of caveats:
+
+* All experimentation and testing uses a toy saga that doesn't actually do anything.
+* The code is prototype-quality (i.e., mediocre).  There's tremendous room for cleanup and improvement.
+* There's virtually no automated testing yet.
+* There are many important considerations not yet addressed.  To start with:
+** updates and versioning: how a saga's code gets packaged, updated, etc.; and how the code and state get versioned
+** Subsagas: it's totally possible for saga actions to create other sagas, which is important because composeability is important for our use case.  However, doing so is not idempotent, and won't necessarily do the right thing in the event of failures.
+
+Major risks and open questions:
+
+* Does this abstraction make sense?  Let's try prototyping it in oxide-api-prototype.
+* Failover (or "high availability execution")
+
+Future feature ideas include:
+
+* control: pause/unpause, abort, concurrency limits, single-step, breakpoints
+* canarying
+* other policies around nodes with no undo actions (e.g., pause and notify an operator, then resume the saga if directed; fail-forward only)
+* a notion of "scope" or "blast radius" for a saga so that a larger system can schedule sagas in a way that preserves overall availability
+* better compile-time type checking, so that you cannot add a node to a saga graph that uses data not provided by one of its ancestors
+
+== Divergence from distributed sagas
+
+As mentioned above, this implementation is very heavily based on distributed sagas.  There are a few important considerations not covered in the talk referenced above:
+
+* How do actions share state with one another?  (If an early step allocates an IP address, how can a later step use that IP address to plumb up a network interface?)
+* How do you provide high-availability execution (at least, execution that automatically continues in the face of failure of the saga execution coordinator (SEC))?  Equivalently: how do you ensure that two SEC instances aren't working concurrently on the same saga?
+
+We're also generalizing the idea in a few ways:
+
+* A node need not have an undo action (compensating request).  We might provide policy that can cause the saga to pause and wait for an operator, or to only fail-forward.
+* See above: canarying, scope, blast radius, etc.
+
+The terminology used in the original talk seems to come from microservices and databases.  We found some of these confusing and chose some different terms:
+
+[cols="1,2,1,2",options="header"]
+|===
+|Our term
+|What it means
+|Distributed Sagas term
+|Why we picked another term
+
+|Action
+|A node in the saga graph, or (equivalently) the user-defined action taken when the executor "executes" that node of the graph
+|Request
+|"Request" suggests an RPC or an HTTP request.  Our actions may involve neither of those or they may comprise many requests.
+
+|Undo action
+|The user-defined action taken for a node whose action needs to be logically reversed
+|Compensating request
+|See "Action" above.  We could have called this "compensating action" but "undo" felt more evocative of what's happening.
+
+|Fail/Failed
+|The result of an action that was not successful
+|Abort/Aborted
+|"Abort" can be used to mean a bunch of things, like maybe that an action failed, or that it was cancelled while it was still running, or that it was undone.  These are all different things so we chose different terms to avoid confusion.
+
+|Undo
+|What happens to a node whose action needs to be logically reversed.  This might involve doing nothing (if the action never ran), executing the undo action (if the action previously succeeded), or something a bit more complicated.
+|Cancel/Cancelled
+|"Cancel" might suggest to a reader that we stopped an action while it was in progress.  That's not what it means here.  Plus, we avoid the awkward "canceled" vs. "cancelled" debate.
+
+|===
